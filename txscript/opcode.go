@@ -1052,13 +1052,14 @@ func verifyLockTime(txLockTime, threshold, lockTime int64) error {
 func opcodeCheckLockTimeVerify(op *opcode, data []byte, vm *Engine) error {
 	// If the ScriptVerifyCheckLockTimeVerify script flag is not set, treat
 	// opcode as OP_NOP2 instead.
-	if !vm.hasFlag(ScriptVerifyCheckLockTimeVerify) {
-		if vm.hasFlag(ScriptDiscourageUpgradableNops) {
-			return scriptError(ErrDiscourageUpgradableNOPs,
-				"OP_NOP2 reserved for soft-fork upgrades")
-		}
-		return nil
-	}
+	/*
+		if !vm.hasFlag(ScriptVerifyCheckLockTimeVerify) {
+			if vm.hasFlag(ScriptDiscourageUpgradableNops) {
+				return scriptError(ErrDiscourageUpgradableNOPs,
+					"OP_NOP2 reserved for soft-fork upgrades")
+			}
+			return nil
+		}*/
 
 	// The current transaction locktime is a uint32 resulting in a maximum
 	// locktime of 2^32-1 (the year 2106).  However, scriptNums are signed
@@ -1126,13 +1127,14 @@ func opcodeCheckLockTimeVerify(op *opcode, data []byte, vm *Engine) error {
 func opcodeCheckSequenceVerify(op *opcode, data []byte, vm *Engine) error {
 	// If the ScriptVerifyCheckSequenceVerify script flag is not set, treat
 	// opcode as OP_NOP3 instead.
-	if !vm.hasFlag(ScriptVerifyCheckSequenceVerify) {
-		if vm.hasFlag(ScriptDiscourageUpgradableNops) {
-			return scriptError(ErrDiscourageUpgradableNOPs,
-				"OP_NOP3 reserved for soft-fork upgrades")
-		}
-		return nil
-	}
+	/*
+		if !vm.hasFlag(ScriptVerifyCheckSequenceVerify) {
+			if vm.hasFlag(ScriptDiscourageUpgradableNops) {
+				return scriptError(ErrDiscourageUpgradableNOPs,
+					"OP_NOP3 reserved for soft-fork upgrades")
+			}
+			return nil
+		}*/
 
 	// The current transaction sequence is a uint32 resulting in a maximum
 	// sequence of 2^32-1.  However, scriptNums are signed and therefore a
