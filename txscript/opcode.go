@@ -1090,11 +1090,12 @@ func opcodeCheckLockTimeVerify(op *opcode, data []byte, vm *Engine) error {
 	// which the transaction is finalized or a timestamp depending on if the
 	// value is before the txscript.LockTimeThreshold.  When it is under the
 	// threshold it is a block height.
-	err = verifyLockTime(int64(vm.tx.LockTime), LockTimeThreshold,
-		int64(lockTime))
-	if err != nil {
-		return err
-	}
+	/*
+		err = verifyLockTime(int64(vm.tx.LockTime), LockTimeThreshold,
+			int64(lockTime))
+		if err != nil {
+			return err
+		}*/
 
 	// The lock time feature can also be disabled, thereby bypassing
 	// OP_CHECKLOCKTIMEVERIFY, if every transaction input has been finalized by
