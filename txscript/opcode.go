@@ -1111,10 +1111,11 @@ func opcodeCheckLockTimeVerify(op *opcode, data []byte, vm *Engine) error {
 	// NOTE: This implies that even if the transaction is not finalized due to
 	// another input being unlocked, the opcode execution will still fail when the
 	// input being used by the opcode is locked.
-	if vm.tx.TxIn[vm.txIdx].Sequence == wire.MaxTxInSequenceNum {
-		return scriptError(ErrUnsatisfiedLockTime,
-			"transaction input is finalized")
-	}
+	/*
+		if vm.tx.TxIn[vm.txIdx].Sequence == wire.MaxTxInSequenceNum {
+			return scriptError(ErrUnsatisfiedLockTime,
+				"transaction input is finalized")
+		}*/
 
 	return nil
 }
@@ -1171,30 +1172,31 @@ func opcodeCheckSequenceVerify(op *opcode, data []byte, vm *Engine) error {
 		return nil
 	}
 
-	// Transaction version numbers not high enough to trigger CSV rules must
-	// fail.
-	if uint32(vm.tx.Version) < 2 {
-		str := fmt.Sprintf("invalid transaction version: %d",
-			vm.tx.Version)
-		return scriptError(ErrUnsatisfiedLockTime, str)
-	}
+	/*
+		// Transaction version numbers not high enough to trigger CSV rules must
+		// fail.
+		if uint32(vm.tx.Version) < 2 {
+			str := fmt.Sprintf("invalid transaction version: %d",
+				vm.tx.Version)
+			return scriptError(ErrUnsatisfiedLockTime, str)
+		}
 
-	// Sequence numbers with their most significant bit set are not
-	// consensus constrained. Testing that the transaction's sequence
-	// number does not have this bit set prevents using this property
-	// to get around a CHECKSEQUENCEVERIFY check.
-	txSequence := int64(vm.tx.TxIn[vm.txIdx].Sequence)
-	if txSequence&int64(wire.SequenceLockTimeDisabled) != 0 {
-		str := fmt.Sprintf("transaction sequence has sequence "+
-			"locktime disabled bit set: 0x%x", txSequence)
-		return scriptError(ErrUnsatisfiedLockTime, str)
-	}
+		// Sequence numbers with their most significant bit set are not
+		// consensus constrained. Testing that the transaction's sequence
+		// number does not have this bit set prevents using this property
+		// to get around a CHECKSEQUENCEVERIFY check.
+		txSequence := int64(vm.tx.TxIn[vm.txIdx].Sequence)
+		if txSequence&int64(wire.SequenceLockTimeDisabled) != 0 {
+			str := fmt.Sprintf("transaction sequence has sequence "+
+				"locktime disabled bit set: 0x%x", txSequence)
+			return scriptError(ErrUnsatisfiedLockTime, str)
+		}*/
 
 	// Mask off non-consensus bits before doing comparisons.
-	lockTimeMask := int64(wire.SequenceLockTimeIsSeconds |
-		wire.SequenceLockTimeMask)
-	return verifyLockTime(txSequence&lockTimeMask,
-		wire.SequenceLockTimeIsSeconds, sequence&lockTimeMask)
+	/*
+		lockTimeMask := int64(wire.SequenceLockTimeIsSeconds |
+			wire.SequenceLockTimeMask)*/
+	return nil
 }
 
 // opcodeToAltStack removes the top item from the main data stack and pushes it
