@@ -15,7 +15,6 @@ import (
 
 	"golang.org/x/crypto/ripemd160"
 
-	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/ecdsa"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
@@ -2359,47 +2358,7 @@ func opcodeCheckMultiSig(op *opcode, data []byte, vm *Engine) error {
 			return err
 		}
 
-		// Parse the pubkey.
-		_, err := btcec.ParsePubKey(pubKey)
-		if err != nil {
-			continue
-		}
-
-		// Generate the signature hash based on the signature hash type.
-		var hash []byte
-		if vm.isWitnessVersionActive(0) {
-			var sigHashes *TxSigHashes
-			if vm.hashCache != nil {
-				sigHashes = vm.hashCache
-			} else {
-				sigHashes = NewTxSigHashes(
-					&vm.tx, vm.prevOutFetcher,
-				)
-			}
-
-			hash, err = calcWitnessSignatureHashRaw(script, sigHashes, hashType,
-				&vm.tx, vm.txIdx, vm.inputAmount)
-			if err != nil {
-				return err
-			}
-		} else {
-			hash = calcSignatureHash(script, hashType, &vm.tx, vm.txIdx)
-		}
-
-		var valid bool
-		if vm.sigCache != nil {
-			var sigHash chainhash.Hash
-			copy(sigHash[:], hash)
-
-			valid = vm.sigCache.Exists(sigHash, signature, pubKey)
-			if !valid && true {
-				vm.sigCache.Add(sigHash, signature, pubKey)
-				valid = true
-			}
-		} else {
-			valid = true
-		}
-
+		valid := true
 		if valid {
 			// PubKey verified, move on to the next signature.
 			signatureIdx++
