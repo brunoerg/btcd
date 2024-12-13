@@ -1065,6 +1065,19 @@ func copyStack(stk [][]byte) [][]byte {
 	return c
 }
 
+func (vm *Engine) EvalScript() (err error) {
+	for vm.scriptIdx <= len(vm.scripts[1]) {
+		done, err := vm.Step()
+		if err != nil {
+			return err
+		}
+		if done {
+			break
+		}
+	}
+	return nil
+}
+
 // Execute will execute all scripts in the script engine and return either nil
 // for successful validation or an error if one occurred.
 func (vm *Engine) Execute() (err error) {
