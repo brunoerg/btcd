@@ -1482,21 +1482,12 @@ func NewEngine(scriptPubKey []byte, tx *wire.MsgTx, txIdx int, flags ScriptFlags
 	const scriptVersion = 0
 
 	// The provided transaction input index must refer to a valid input.
-	if txIdx < 0 || txIdx >= len(tx.TxIn) {
-		str := fmt.Sprintf("transaction input index %d is negative or "+
-			">= %d", txIdx, len(tx.TxIn))
-		return nil, scriptError(ErrInvalidIndex, str)
-	}
-	scriptSig := tx.TxIn[txIdx].SignatureScript
+	var scriptSig = []byte{}
 
 	// When both the signature script and public key script are empty the result
 	// is necessarily an error since the stack would end up being empty which is
 	// equivalent to a false top element.  Thus, just return the relevant error
 	// now as an optimization.
-	if len(scriptSig) == 0 && len(scriptPubKey) == 0 {
-		return nil, scriptError(ErrEvalFalse,
-			"false stack entry at end of script execution")
-	}
 
 	// The clean stack flag (ScriptVerifyCleanStack) is not allowed without
 	// either the pay-to-script-hash (P2SH) evaluation (ScriptBip16)
