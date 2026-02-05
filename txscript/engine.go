@@ -1065,6 +1065,7 @@ func copyStack(stk [][]byte) [][]byte {
 	return c
 }
 
+// required for bitcoinfuzz
 func (vm *Engine) EvalScript() (err error) {
 	for vm.scriptIdx <= len(vm.scripts[1]) {
 		done, err := vm.Step()
