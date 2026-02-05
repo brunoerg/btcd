@@ -458,15 +458,19 @@ func checkMinimalDataPush(op *opcode, data []byte) error {
 // whether or not it is hidden by conditionals, but some rules still must be
 // tested in this case.
 func (vm *Engine) executeOpcode(op *opcode, data []byte) error {
+	fmt.Printf("[DEBUG executeOpcode] op=%s (0x%02x), scriptIdx=%d, isBranchExecuting=%v\n",
+			op.name, op.value, vm.scriptIdx, vm.isBranchExecuting())
 	// Disabled opcodes are fail on program counter.
 	if isOpcodeDisabled(op.value) {
 		str := fmt.Sprintf("attempt to execute disabled opcode %s", op.name)
+		fmt.Printf("[DEBUG executeOpcode] Disabled opcode detected: %s\n", str)
 		return scriptError(ErrDisabledOpcode, str)
 	}
 
 	// Always-illegal opcodes are fail on program counter.
 	if isOpcodeAlwaysIllegal(op.value) {
 		str := fmt.Sprintf("attempt to execute reserved opcode %s", op.name)
+		fmt.Printf("[DEBUG executeOpcode] Always-illegal opcode detected: %s\n", str)
 		return scriptError(ErrReservedOpcode, str)
 	}
 
@@ -1088,6 +1092,14 @@ func (vm *Engine) Execute() (err error) {
 		return nil
 	}
 
+	fmt.Printf("[DEBUG Execute] Starting execution\n")
+	fmt.Printf("[DEBUG Execute] Number of scripts: %d\n", len(vm.scripts))
+
+	for i, script := range vm.scripts {
+			fmt.Printf("[DEBUG Execute] Script %d: %x\n", i, script)
+		}
+		fmt.Printf("[DEBUG Execute] Starting scriptIdx: %d\n", vm.scriptIdx)
+
 	// If the stepCallback is set, we start by making a call back with the
 	// initial engine state.
 	var stepInfo *StepInfo
@@ -1484,6 +1496,16 @@ func NewEngine(scriptPubKey []byte, tx *wire.MsgTx, txIdx int, flags ScriptFlags
 	// The provided transaction input index must refer to a valid input.
 	var scriptSig = []byte{}
 
+	fmt.Printf("[DEBUG NewEngine] txIdx: %d\n", txIdx)
+	fmt.Printf("[DEBUG NewEngine] len(tx.TxIn): %d\n", len(tx.TxIn))
+
+	if txIdx < len(tx.TxIn) {
+		scriptSig = tx.TxIn[txIdx].SignatureScript
+		fmt.Printf("[DEBUG NewEngine] Extracted scriptSig: %x\n", scriptSig)
+	} else {
+		fmt.Printf("[DEBUG NewEngine] txIdx out of range, scriptSig remains empty\n")
+	}
+
 	// When both the signature script and public key script are empty the result
 	// is necessarily an error since the stack would end up being empty which is
 	// equivalent to a false top element.  Thus, just return the relevant error
@@ -1506,6 +1528,11 @@ func NewEngine(scriptPubKey []byte, tx *wire.MsgTx, txIdx int, flags ScriptFlags
 		inputAmount:    inputAmount,
 		prevOutFetcher: prevOutFetcher,
 	}
+
+	fmt.Printf("[DEBUG Execute] After execution, stack depth: %d\n", vm.dstack.Depth())
+	fmt.Printf("[DEBUG Execute] Has ScriptVerifyCleanStack flag: %v\n",
+    vm.hasFlag(ScriptVerifyCleanStack))
+
 	if vm.hasFlag(ScriptVerifyCleanStack) && (!vm.hasFlag(ScriptBip16) &&
 		!vm.hasFlag(ScriptVerifyWitness)) {
 		return nil, scriptError(ErrInvalidFlags,
@@ -1552,6 +1579,11 @@ func NewEngine(scriptPubKey []byte, tx *wire.MsgTx, txIdx int, flags ScriptFlags
 		}
 	}
 	vm.scripts = scripts
+
+	fmt.Printf("[DEBUG NewEngine] vm.scripts assigned:\n")
+for i, s := range vm.scripts {
+		fmt.Printf("[DEBUG NewEngine]   scripts[%d]: %x\n", i, s)
+}
 
 	// Advance the program counter to the public key script if the signature
 	// script is empty since there is nothing to execute for it in that case.

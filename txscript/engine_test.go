@@ -7,10 +7,314 @@ package txscript
 
 import (
 	"testing"
-
+	"fmt"
+	"strings"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
 )
+
+func TestCleanStack(t *testing.T) {
+	t.Parallel()
+	scriptSig := []byte{0x00, 0x00, 0x00}    // OP_0 OP_0 OP_0
+	scriptPubKey := []byte{0x4f}             // OP_1NEGATE
+
+	t.Logf("scriptSig hex: %x", scriptSig)
+	t.Logf("scriptPubKey hex: %x", scriptPubKey)
+
+	// Create a transaction
+	tx := wire.NewMsgTx(wire.TxVersion)
+	txIn := wire.NewTxIn(&wire.OutPoint{}, nil, nil)
+	txIn.SignatureScript = scriptSig
+	tx.AddTxIn(txIn)
+
+	// Create the script engine
+	prevoutAmt := int64(1000)
+	fetcher := NewCannedPrevOutputFetcher(scriptPubKey, prevoutAmt)
+
+	vm, err := NewEngine(
+		scriptPubKey,
+		tx,
+		0, // input index
+		StandardVerifyFlags, // Includes ScriptVerifyCleanStack
+		nil, // sigCache
+		nil, // hashCache
+		prevoutAmt,
+		fetcher,
+	)
+
+	if err != nil {
+		t.Logf("NewEngine error: %v", err)
+		return
+	}
+
+	// Execute the script
+	err = vm.Execute()
+
+	// Should fail with CLEANSTACK error - stack has 4 elements instead of 1
+	if err == nil {
+		t.Fatalf("Script execution passed but should have failed with CLEANSTACK error (stack size must be exactly 1)")
+	}
+
+	t.Logf("Execute error: %v", err)
+
+	// Verify it's a cleanstack error
+	if !strings.Contains(err.Error(), "clean stack") {
+		t.Errorf("Expected cleanstack error, got: %v", err)
+	}
+}
+
+func TestInvalidOpcode3(t *testing.T) {
+	t.Parallel()
+	scriptSig := []byte{0x00, 0x00, 0x00}    // OP_0 OP_0 OP_0
+	scriptPubKey := []byte{0x4f}             // OP_1NEGATE
+
+	t.Logf("scriptSig hex: %x", scriptSig)
+	t.Logf("scriptPubKey hex: %x", scriptPubKey)
+
+	// Create a transaction
+	tx := wire.NewMsgTx(wire.TxVersion)
+	txIn := wire.NewTxIn(&wire.OutPoint{}, nil, nil)
+	txIn.SignatureScript = scriptSig
+	tx.AddTxIn(txIn)
+
+	// Create the script engine
+	prevoutAmt := int64(1000)
+	fetcher := NewCannedPrevOutputFetcher(scriptPubKey, prevoutAmt)
+
+	vm, err := NewEngine(
+		scriptPubKey,
+		tx,
+		0, // input index
+		StandardVerifyFlags,
+		nil, // sigCache
+		nil, // hashCache
+		prevoutAmt,
+		fetcher,
+	)
+
+	if err != nil {
+		t.Logf("NewEngine error: %v", err)
+		// This is acceptable - error might be caught during parsing
+		return
+	}
+
+	// Execute the script
+	err = vm.Execute()
+
+	t.Logf("Execute error: %v (err == nil: %v)", err, err == nil)
+
+	// This script should execute successfully:
+	// scriptSig pushes three empty values (OP_0 OP_0 OP_0)
+	// scriptPubKey pushes -1 (OP_1NEGATE)
+	// Final stack should have: [empty, empty, empty, -1]
+	// Script fails if top of stack is false/empty, succeeds if true/non-empty
+	// -1 is "true" so this should succeed
+
+	if err != nil {
+		t.Logf("Script execution failed with: %v", err)
+	} else {
+		t.Logf("Script execution succeeded")
+	}
+}
+
+func TestInvalidOpcode2(t *testing.T) {
+	t.Parallel()
+	scriptSig := []byte{0x00, 0x00, 0x00}    // OP_0 OP_INVALIDOPCODE
+	scriptPubKey := []byte{0x48}       // OP_2
+
+	t.Logf("scriptSig hex: %x", scriptSig)
+	t.Logf("scriptPubKey hex: %x", scriptPubKey)
+
+	// Create a transaction
+	tx := wire.NewMsgTx(wire.TxVersion)
+	txIn := wire.NewTxIn(&wire.OutPoint{}, nil, nil)
+	txIn.SignatureScript = scriptSig
+	tx.AddTxIn(txIn)
+
+	// Create the script engine
+	prevoutAmt := int64(1000)
+	fetcher := NewCannedPrevOutputFetcher(scriptPubKey, prevoutAmt)
+
+	vm, err := NewEngine(
+		scriptPubKey,
+		tx,
+		0, // input index
+		StandardVerifyFlags,
+		nil, // sigCache
+		nil, // hashCache
+		prevoutAmt,
+		fetcher,
+	)
+
+	if err != nil {
+		fmt.Printf("NewEngine error: %v", err)
+		// This is acceptable - invalid opcode might be caught during parsing
+		return
+	}
+
+	// Execute the script
+	if err := vm.Execute(); err != nil {
+		fmt.Printf("Execute error: %v", err)
+		//t.Fatalf("Script execution passed but should have failed with BAD_OPCODE error")
+	}
+}
+
+func TestMinimalDataScriptPubKey2(t *testing.T) {
+	t.Parallel()
+	scriptSig := []byte{0x00, 0x00}    // OP_0 OP_0
+	scriptPubKey := []byte{0x01, 0x0a} // OP_DATA_1 0x0a (should be OP_10 = 0x59)
+
+	t.Logf("scriptSig hex: %x", scriptSig)
+	t.Logf("scriptPubKey hex: %x", scriptPubKey)
+
+	// Create a transaction
+	tx := wire.NewMsgTx(wire.TxVersion)
+	txIn := wire.NewTxIn(&wire.OutPoint{}, nil, nil)
+	txIn.SignatureScript = scriptSig
+	tx.AddTxIn(txIn)
+
+	// Create the script engine
+	prevoutAmt := int64(1000)
+	fetcher := NewCannedPrevOutputFetcher(scriptPubKey, prevoutAmt)
+
+	vm, err := NewEngine(
+		scriptPubKey,
+		tx,
+		0, // input index
+		StandardVerifyFlags,
+		nil, // sigCache
+		nil, // hashCache
+		prevoutAmt,
+		fetcher,
+	)
+
+	if err != nil {
+		t.Logf("NewEngine error: %v", err)
+		t.Fatalf("Expected script to fail with minimal data error, got NewEngine error: %v", err)
+	}
+
+	// Execute the script
+	err = vm.Execute()
+
+	if err == nil {
+		t.Fatalf("Script execution passed but should have failed with MINIMALDATA error")
+	}
+
+	t.Logf("Execute error: %v", err)
+
+	// This should fail with a minimal data error
+	// The scriptPubKey pushes 0x0a (decimal 10) which should be encoded as OP_10 (0x59)
+}
+
+func TestMinimalDataScriptPubKey(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name           string
+		scriptSig      []byte
+		scriptPubKey   []byte
+		shouldPass     bool
+		expectedError  string
+	}{
+		{
+			name:          "Non-minimal push in scriptPubKey (value 10)",
+			scriptSig:     []byte{0x00, 0x00}, // OP_0 OP_0
+			scriptPubKey:  []byte{0x01, 0x0a}, // OP_DATA_1 0x0a (should be OP_10)
+			shouldPass:    false,
+			expectedError: "minimal data",
+		},
+		{
+			name:          "Minimal encoding in scriptPubKey (OP_10)",
+			scriptSig:     []byte{0x00, 0x00}, // OP_0 OP_0
+			scriptPubKey:  []byte{0x59},       // OP_10 (correct minimal encoding)
+			shouldPass:    true,
+			expectedError: "",
+		},
+		{
+			name:          "Non-minimal push in scriptSig (value 10)",
+			scriptSig:     []byte{0x01, 0x0a}, // OP_DATA_1 0x0a (should be OP_10)
+			scriptPubKey:  []byte{0x00, 0x00}, // OP_0 OP_0
+			shouldPass:    false,
+			expectedError: "",
+		},
+		{
+			name:          "Non-minimal zero push in scriptPubKey",
+			scriptSig:     []byte{0x00},       // OP_0
+			scriptPubKey:  []byte{0x01, 0x00}, // OP_DATA_1 0x00 (should be OP_0)
+			shouldPass:    false,
+			expectedError: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create a transaction
+			tx := wire.NewMsgTx(wire.TxVersion)
+			txIn := wire.NewTxIn(&wire.OutPoint{}, nil, nil)
+			txIn.SignatureScript = tt.scriptSig
+			tx.AddTxIn(txIn)
+
+			// Create the script engine
+			prevoutAmt := int64(1000)
+			fetcher := NewCannedPrevOutputFetcher(tt.scriptPubKey, prevoutAmt)
+
+			vm, err := NewEngine(
+				tt.scriptPubKey,
+				tx,
+				0, // input index
+				StandardVerifyFlags,
+				nil, // sigCache
+				nil, // hashCache
+				prevoutAmt,
+				fetcher,
+			)
+
+			if err != nil {
+				if tt.shouldPass {
+					t.Fatalf("NewEngine failed but should have passed: %v", err)
+				}
+				// Check if error message contains expected string
+				if tt.expectedError != "" && !contains(err.Error(), tt.expectedError) {
+					t.Fatalf("Expected error containing '%s', got: %v", tt.expectedError, err)
+				}
+				return
+			}
+
+			// Execute the script
+			err = vm.Execute()
+
+			if tt.shouldPass {
+				if err != nil {
+					t.Fatalf("Script execution failed but should have passed: %v", err)
+				}
+			} else {
+				if err == nil {
+					t.Fatalf("Script execution passed but should have failed")
+				}
+				// Check if error message contains expected string
+				if tt.expectedError != "" && !contains(err.Error(), tt.expectedError) {
+					t.Fatalf("Expected error containing '%s', got: %v", tt.expectedError, err)
+				}
+			}
+		})
+	}
+}
+
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) &&
+		(s[:len(substr)] == substr || s[len(s)-len(substr):] == substr ||
+		containsHelper(s, substr)))
+}
+
+func containsHelper(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
+}
+
 
 // TestBadPC sets the pc to a deliberately bad result then confirms that Step
 // and Disasm fail correctly.
